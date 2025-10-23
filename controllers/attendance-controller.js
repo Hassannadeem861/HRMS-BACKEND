@@ -4,11 +4,13 @@ import Employee from "../models/employer-model.js";
 import Leave from "../models/leave-model.js";
 import Remote from "../models/remote-model.js";
 import ManageOfficeTime from "../models/manage-office-time-model.js";
+import officeLoan from "../models/office-loan-model.js";
 import xlsx from "xlsx";
 import path from "path";
 import fs from "fs";
 // import dayjs from "dayjs";
 import { parse, differenceInMinutes, set } from "date-fns";
+import moment from "moment-timezone";
 
 const uploadAttendanceExcel = async (req, res) => {
   try {
@@ -346,7 +348,7 @@ const getSingleAttendance = async (req, res) => {
 
     // ✅ Convert office check-in/out time (like "9:00 AM") to Date object
     const parseOfficeTime = (baseDate, timeStr) => {
-      const [time, modifier] = timeStr.split(" ");
+      const [time, modifier] = timeStr.split(" "); // ["9:00 AM"]
       let [hours, minutes] = time.split(":").map(Number);
 
       if (modifier === "PM" && hours < 12) hours += 12;
@@ -358,8 +360,21 @@ const getSingleAttendance = async (req, res) => {
     };
 
     // ✅ Month aur year ko Date filter mai use karne ke liye start aur end date banao
+    // const startDate = new Date(`${year}-${month}-01T00:00:00Z`);
+    // const endDate = new Date(`${year}-${month}-31T23:59:59Z`);
+
     const startDate = new Date(`${year}-${month}-01T00:00:00Z`);
-    const endDate = new Date(`${year}-${month}-31T23:59:59Z`);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1); // Agla month
+    endDate.setDate(endDate.getDate() - 1); // Pichla din
+    endDate.setHours(23, 59, 59, 999); // Day ka end time
+
+    // Example: September 2025
+    // startDate: "2025-09-01T00:00:00Z"
+    // endDate: "2025-09-30T23:59:59Z"
+
+    // console.log("startDate:", startDate);
+    // console.log("endDate:", endDate);
 
     const employee = await Employee.findOne({ empNo: Number(empNo) }).lean();
     if (!employee) {
@@ -394,7 +409,6 @@ const getSingleAttendance = async (req, res) => {
         ],
       },
     }).lean();
-    // console.log("leaves: ", leaves);
 
     const remote = await Remote.find({
       empNo: Number(empNo),
@@ -406,15 +420,13 @@ const getSingleAttendance = async (req, res) => {
       },
     }).lean();
 
-    // console.log("remote: ", remote);
-
-    if (!records || records.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: `❌ Attendance not found for empNo ${empNo}`,
-        records: [],
-      });
-    }
+    // if (!records || records.length === 0) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: `❌ Attendance not found for empNo ${empNo}`,
+    //     records: [],
+    //   });
+    // }
 
     const holidayDates = holidays.map(
       (h) => new Date(h.date).toISOString().split("T")[0]
@@ -544,7 +556,6 @@ const getSingleAttendance = async (req, res) => {
             const extraMinutes = differenceInMinutes(lastOut, ninePM);
             extraHours = parseFloat((extraMinutes / 60).toFixed(2));
           }
-          
         }
 
         firstCheckInTime = firstIn
@@ -619,11 +630,20 @@ const getSingleAttendance = async (req, res) => {
     }
 
     // 🔹 Fill Absent + Sunday
+    // const allDates = records.map((r) => new Date(r.date));
+    // const minDate = new Date(Math.min(...allDates));
+    // const maxDate = new Date(Math.max(...allDates));
+    // maxDate.setMonth(maxDate.getMonth() + 1, 0);
+
+    // let checkDate = new Date(minDate);
+
+    // 🔹 Fill Absent + Sunday - CORRECTED VERSION
     const allDates = records.map((r) => new Date(r.date));
-    const minDate = new Date(Math.min(...allDates));
-    const maxDate = new Date(Math.max(...allDates));
-    maxDate.setMonth(maxDate.getMonth() + 1, 0);
-    let checkDate = new Date(minDate);
+
+    // Agar koi record nahi hai, toh startDate se endDate tak sab absent honge
+    let checkDate = new Date(startDate); // ✅ September 01 se start karo
+    const maxDate = new Date(endDate);
+
     while (checkDate <= maxDate) {
       const dateOnly = checkDate.toISOString().split("T")[0];
       const isSunday = checkDate.getDay() === 0;
@@ -744,22 +764,64 @@ const getSingleAttendance = async (req, res) => {
 
     // Per day salary
     const perDaySalary = baseSalary / daysInMonth;
-    // console.log("perDaySalary: ", perDaySalary);
+    console.log("perDaySalary: ", perDaySalary);
 
     const convertToNormalNumber = Math.round(perDaySalary);
-    // console.log("convertToNormalNumber: ", convertToNormalNumber);
+    console.log("convertToNormalNumber: ", convertToNormalNumber);
 
     // Absent deduction = absent * perDaySalary
     const absentDeduction = absent * convertToNormalNumber;
-    // console.log("absentDeduction: ", absentDeduction);
+    console.log("absentDeduction: ", absentDeduction);
 
     // Late deduction (rule: 1 late = 250)
     const lateDeduction = late * 250;
-    // console.log("lateDeduction: ", lateDeduction);
+    console.log("lateDeduction: ", lateDeduction);
 
     // Final salary
     const netSalary = baseSalary - absentDeduction - lateDeduction;
     // console.log("netSalary: ", netSalary);
+
+    // 🔹 Check if employee has active loan
+    // const existingLoan = await officeLoan
+    //   .find({
+    //     employeeId: employee._id,
+    //     deleted_at: null, // agar soft delete use kar rahe ho to
+    //   })
+    //   .lean();
+    // console.log("existingLoan: ", existingLoan);
+
+    // let finalSalary = netSalary;
+    // let totalLoanDeduction = 0;
+
+    // existingLoan.forEach((Amount) => {
+    //   let loanDate = Amount.date;
+    //   totalLoanDeduction += Amount.loan;
+    // });
+    // finalSalary = netSalary - totalLoanDeduction;
+
+    // ✅ Get all loans for employee
+    const existingLoan = await officeLoan
+      .find({
+        employeeId: employee._id,
+        deleted_at: null,
+      })
+      .lean();
+
+    let totalLoanDeduction = 0;
+
+    existingLoan.forEach((loanItem) => {
+      const loanDate = new Date(loanItem.date);
+      const loanMonth = loanDate.getMonth() + 1; // JS months start at 0
+      const loanYear = loanDate.getFullYear();
+
+      // ✅ Compare with requested salary month/year
+      if (loanMonth === Number(month) && loanYear === Number(year)) {
+        totalLoanDeduction += loanItem.loan;
+      }
+    });
+
+    // ✅ Final salary calculation
+    const finalSalary = netSalary - totalLoanDeduction;
 
     return res.status(200).json({
       success: true,
@@ -787,7 +849,9 @@ const getSingleAttendance = async (req, res) => {
         baseSalary,
         absentDeduction,
         lateDeduction,
+        totalLoanDeduction,
         netSalary,
+        finalSalary,
       },
     });
   } catch (error) {

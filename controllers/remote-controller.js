@@ -98,10 +98,10 @@ export const getRemote = async (req, res) => {
 export const updateRemote = async (req, res) => {
   const { remoteId } = req.params;
   try {
-    const { date, reason, type, status } = req.body;
+    const { empNo, date, reason, workMode } = req.body;
     const remote = await Remote.findByIdAndUpdate(
       remoteId,
-      { date, reason, workMode, status, updated_at: new Date() },
+      {empNo, date, reason, workMode, updated_at: new Date() },
       { new: true }
     );
 
@@ -113,7 +113,7 @@ export const updateRemote = async (req, res) => {
 
     return res
       .status(200)
-      .json({ success: true, message: "✅ Remote updated", leave });
+      .json({ success: true, message: "✅ Remote updated", remote });
   } catch (error) {
     return res.status(500).json({
       success: false,

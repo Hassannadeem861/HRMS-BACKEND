@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
     empNo: {
       type: Number,
       required: true,
-      unique: true, 
+      unique: true,
     },
     name: {
       type: String,
@@ -65,14 +65,27 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    // fileUpload: {
+    //   data: String,
+    //   mimetype: String,
+    //   originalname: String,
+    // },
+    // pdfUpload: {
+    //   data: String,
+    //   mimetype: String,
+    //   originalname: String,
+    // },
+
     pdfUpload: {
-      type: String,
+      type: Buffer,
+      // type: String,
       default: null,
       // required: true,
     },
 
     fileUpload: {
-      type: String,
+      type: Buffer,
+      // type: String,
       default: null,
       // required: true,
     },

@@ -40,7 +40,6 @@ app.use(
 
       // ✅ Agar origin allowed list me hai to allow karo
       if (allowedOrigins.includes(origin)) {
-        console.log("allowedOrigins.includes(origin) :", allowedOrigins.includes(origin))
         callback(null, true);
       } else {
         console.log("❌ Blocked by CORS:", origin);
@@ -80,6 +79,7 @@ import holidayRouter from "./routes/holiday-routes.js";
 import leaveRouter from "./routes/leave-route.js";
 import remoteRouter from "./routes/remote-route.js";
 import manageOfficeTimeRouter from "./routes/manage-office-time-route.js";
+import officeLoanRouter from "./routes/office-loan-route.js";
 
 app.use("/api/v1", AdminAuthRouter);
 app.use("/api/v1", employerRouter);
@@ -92,6 +92,7 @@ app.use("/api/v1", holidayRouter);
 app.use("/api/v1", leaveRouter);
 app.use("/api/v1", remoteRouter);
 app.use("/api/v1", manageOfficeTimeRouter);
+app.use("/api/v1", officeLoanRouter);
 
 // test route
 app.get("/", (req, res) => {

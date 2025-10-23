@@ -2,7 +2,6 @@ import User from "../models/employer-model.js";
 
 const createEmployer = async (req, res) => {
   try {
-    
     const {
       empNo,
       name,
@@ -17,20 +16,20 @@ const createEmployer = async (req, res) => {
       status,
     } = req.body;
 
-    const statusNumber = Number(status);    
+    const statusNumber = Number(status);
 
     if (
-      empNo,
+      (empNo,
       !name ||
-      !email ||
-      !mobile_number ||
-      !designation ||
-      !account_number ||
-      !permanent_address ||
-      !salary ||
-      !date_of_birth ||
-      !date_of_joining ||
-      (statusNumber !== 0 && statusNumber !== 1)
+        !email ||
+        !mobile_number ||
+        !designation ||
+        !account_number ||
+        !permanent_address ||
+        !salary ||
+        !date_of_birth ||
+        !date_of_joining ||
+        (statusNumber !== 0 && statusNumber !== 1))
     ) {
       return res.status(400).send(`
         ❌ Required fields are missing.
@@ -52,14 +51,58 @@ const createEmployer = async (req, res) => {
       `);
     }
 
-
     const existingUser = await User.findOne({ empNo });
     if (existingUser) {
       return res.status(409).json({ message: "EmpNo already exists ❌" });
     }
 
-    const fileUploadPath = req.files?.fileUpload?.[0]?.filename || null;
-    const pdfUploadPath = req.files?.pdfUpload?.[0]?.filename || null;
+    // const fileUploadPath = req.files?.fileUpload?.[0]?.filename || null;
+    // const pdfUploadPath = req.files?.pdfUpload?.[0]?.filename || null;
+
+    // ✅ File handling (memory buffer to Base64)
+    let fileUploadData = null;
+    let pdfUploadData = null;
+
+    if (req.files?.fileUpload?.[0]) {
+      const file = req.files.fileUpload[0];
+      console.log("file: ", file);
+      fileUploadData = file.buffer;
+    }
+
+    if (req.files?.pdfUpload?.[0]) {
+      const file = req.files.pdfUpload[0];
+      console.log("file: ", file);
+
+      pdfUploadData = file.buffer;
+    }
+
+    // // ✅ File buffer to Base64
+    // if (req.files?.fileUpload?.[0]) {
+    //   const file = req.files.fileUpload[0];
+    //   console.log("file: ", file);
+
+    //   // updateFields.fileUpload = file.buffer.toString("base64"); // 👈 direct string
+    //   updateFields.fileUpload = file.buffer;
+    //   // updateFields.fileUpload = {
+    //   //   data: file.buffer.toString("base64"),
+    //   //   mimetype: file.mimetype,
+    //   //   originalname: file.originalname,
+    //   // };
+    // }
+
+    // if (req.files?.pdfUpload?.[0]) {
+    //   const file = req.files.pdfUpload[0];
+    //   console.log("file: ", file);
+
+    //   // updateFields.pdfUpload = file.buffer.toString("base64"); // 👈 direct string
+    //   updateFields.pdfUpload = file.buffer; // 👈 direct string
+
+    //   // updateFields.pdfUpload = {
+    //   //   data: file.buffer.toString("base64"),
+    //   //   mimetype: file.mimetype,
+    //   //   originalname: file.originalname,
+    //   // };
+    // }
 
     const newUser = await User.create({
       empNo,
@@ -72,8 +115,8 @@ const createEmployer = async (req, res) => {
       salary,
       date_of_birth,
       date_of_joining,
-      fileUpload: fileUploadPath,
-      pdfUpload: pdfUploadPath,
+      fileUpload: fileUploadData,
+      pdfUpload: pdfUploadData,
       status: statusNumber,
       created_at: new Date(),
     });
@@ -144,10 +187,10 @@ const updateEmployer = async (req, res) => {
     } = req.body;
 
     const statusNumber = Number(status);
-   
-    // Optional file paths
-    const fileUploadPath = req.files?.fileUpload?.[0]?.filename || undefined;
-    const pdfUploadPath = req.files?.pdfUpload?.[0]?.filename || undefined;
+
+    // // Optional file paths
+    // const fileUploadPath = req.files?.fileUpload?.[0]?.filename || undefined;
+    // const pdfUploadPath = req.files?.pdfUpload?.[0]?.filename || undefined;
 
     // Build update object
     const updateFields = {
@@ -165,12 +208,40 @@ const updateEmployer = async (req, res) => {
       updated_at: new Date(),
     };
 
-    if (fileUploadPath) {
-      updateFields.fileUpload = fileUploadPath;
+    // if (fileUploadPath) {
+    //   updateFields.fileUpload = fileUploadPath;
+    // }
+
+    // if (pdfUploadPath) {
+    //   updateFields.pdfUpload = pdfUploadPath;
+    // }
+
+    // ✅ File buffer to Base64
+    if (req.files?.fileUpload?.[0]) {
+      const file = req.files.fileUpload[0];
+      console.log("file: ", file);
+
+      // updateFields.fileUpload = file.buffer.toString("base64"); // 👈 direct string
+      updateFields.fileUpload = file.buffer;
+      // updateFields.fileUpload = {
+      //   data: file.buffer.toString("base64"),
+      //   mimetype: file.mimetype,
+      //   originalname: file.originalname,
+      // };
     }
 
-    if (pdfUploadPath) {
-      updateFields.pdfUpload = pdfUploadPath;
+    if (req.files?.pdfUpload?.[0]) {
+      const file = req.files.pdfUpload[0];
+      console.log("file: ", file);
+
+      // updateFields.pdfUpload = file.buffer.toString("base64"); // 👈 direct string
+      updateFields.pdfUpload = file.buffer; // 👈 direct string
+
+      // updateFields.pdfUpload = {
+      //   data: file.buffer.toString("base64"),
+      //   mimetype: file.mimetype,
+      //   originalname: file.originalname,
+      // };
     }
 
     const updatedUser = await User.findOneAndUpdate(
@@ -190,7 +261,6 @@ const updateEmployer = async (req, res) => {
       message: "Employer updated successfully ✅",
       updatedUser,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error updating employer ❌",

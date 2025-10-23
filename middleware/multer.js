@@ -14,27 +14,42 @@
 
 // export default upload;
 
-
 import multer from "multer";
 
 // ✅ VERCEL COMPATIBLE: Use memory storage instead of disk storage
 const storage = multer.memoryStorage(); // No file system writes
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    // ✅ Allow only Excel files
-    if (file.mimetype === 'application/vnd.ms-excel' || 
-        file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.originalname.match(/\.(xlsx|xls)$/)) {
+    // allowed file types list
+    const allowedTypes = [
+      // Excel
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // PDF
+      "application/pdf",
+      // Images
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp",
+    ];
+
+    // check file mimetype OR extension
+
+    if (
+      allowedTypes.includes(file.mimetype) ||
+      file.originalname.match(/\.(xlsx|xls|pdf|jpg|jpeg|png|webp)$/i)
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Only Excel files are allowed!'), false);
+      cb(new Error("Only Excel, PDF, or Image files are allowed!"), false);
     }
-  }
+  },
 });
 
 export default upload;
